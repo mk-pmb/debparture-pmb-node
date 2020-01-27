@@ -1,0 +1,37 @@
+{ "name": "debparture-pmb",
+  "version": "0.0.1",
+  "description": "Yet another Debian/Ubuntu linux installer.",
+  "keywords": [
+    "debian",
+    "debootstrap",
+    "installer",
+    "linux",
+    "ubuntu"
+  ],
+
+  "author": "M.K. (https://github.com/mk-pmb)",
+  "homepage": "https://github.com/mk-pmb/debparture-pmb-node/#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mk-pmb/debparture-pmb-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mk-pmb/debparture-pmb-node/issues"
+  },
+  "contributors": [],
+
+  "private": false, "license": "ISC",
+
+  "main": "src/nodejs-pkg-api/api.mjs",
+  "bin": "bin/debparture.sh",
+  "scripts": { "test": "nodemjs test/all.mjs" },
+  "directories": { "test": "test" },
+
+  "dependencies": {},
+  "devDependencies": {
+    "nodemjs": "^0.1.4"
+  },
+
+
+  "npm vs. BOM = Unexpected token": "-*- coding: UTF-8 -*-"
+}
