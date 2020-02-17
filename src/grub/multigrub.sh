@@ -5,7 +5,7 @@
 
 function multigrub () {
   # local ESP_MNPT="$(stat -c %m -- "$EFI_DIR/")"
-  local ESP_MNPT="$1"; shift
+  local ESP_MNPT="${1:-/target/boot}"; shift
   ESP_MNPT="${ESP_MNPT%/}"
   [ -d "$ESP_MNPT/EFI" ] || return 4$(
     echo "E: ESP path '$ESP_MNPT' doesn't have an 'EFI' subdirectory." >&2)
@@ -29,11 +29,13 @@ function multigrub () {
     --removable
     -- "$ESP_DISK"
     )
+  local SUDO_CMD=
+  [ "$USER" == root ] || SUDO_CMD='sudo -E'
   local PLATF=
   for PLATF in /usr/lib/grub/*-{efi,pc}/; do
     [ -f "$PLATF/modinfo.sh" ] || continue
     PLATF="$(basename -- "${PLATF%/}")"
-    sudo -E grub-install --target="$PLATF" "${GI_OPTS[@]}" || return $?
+    $SUDO_CMD grub-install --target="$PLATF" "${GI_OPTS[@]}" || return $?
   done
 }
 
