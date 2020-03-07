@@ -25,6 +25,7 @@ function multigrub_main () {
     "'$ESP_MPT'" >&2)
   local ESP_DISK='
     s~^(/dev/[sh]d[a-z]+)[0-9]+$~\1~p
+    s~^(/dev/mmcblk[0-9]+)p[0-9]+$~\1~p
     '
   ESP_DISK="$(<<<"$ESP_PTN" sed -nrf <(echo "$ESP_DISK"))"
   [ -b "$ESP_DISK" ] || return 4$(
