@@ -6,6 +6,9 @@ Ubuntu GRUB cheat sheet
 
   ```bash
   sudo aptitude install grub2-common grub-{pc,efi-{ia32,amd64}}{_,-bin}
+  # or
+  sudo apt install grub2-common grub-{pc,efi-{ia32,amd64}}-bin
+  sudo apt remove               grub-{pc,efi-{ia32,amd64}}
   ```
 
   * `grub2-common` provides the `grub-install` command.
