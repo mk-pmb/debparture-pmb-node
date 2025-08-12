@@ -6,6 +6,7 @@ function multigrub_main () {
   local SUDO_CMD=
   [ "$USER" == root ] || SUDO_CMD='sudo -E'
 
+  local STOPWATCH_PREV_UTS=
   local BOOT_DIR="$1"
   if [ -z "$BOOT_DIR" ]; then
     for BOOT_DIR in /target/{mnt/esp,boot}; do
@@ -55,9 +56,31 @@ function multigrub_main () {
     for PLATF in /usr/lib/grub/*-"$PLATF"/; do
       [ -f "$PLATF/modinfo.sh" ] || continue
       PLATF="$(basename -- "${PLATF%/}")"
+      stopwatch_start_line
+      # ^-- No "D:" prefix because the next line(s) printed may stem from
+      # GRUB hook scripts and may carry their own log level markers.
+      SECONDS=0
       $SUDO_CMD $GRUB_CMD"$PLATF" "${GI_OPTS[@]}" || return $?
     done
   done
+
+  stopwatch_start_line
+  echo 'Done.'
+}
+
+
+function stopwatch_start_line () {
+  local NOW= DELTA='0s'
+  printf -v NOW '%(%s)T' -1
+  if [ -n "$STOPWATCH_PREV_UTS" ]; then
+    (( DELTA = NOW - STOPWATCH_PREV_UTS ))
+    TZ=UTC printf -v DELTA '%(%Hh%Mm%Ss)T' "$DELTA"
+    DELTA="${DELTA#00h}"
+    DELTA="${DELTA#00m}"
+    DELTA="${DELTA#0}"
+  fi
+  printf '[%(%F %T)T = +%s] ' "$NOW" "$DELTA"
+  STOPWATCH_PREV_UTS="$NOW"
 }
 
 
