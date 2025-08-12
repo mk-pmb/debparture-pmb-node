@@ -8,12 +8,14 @@ function multigrub_main () {
 
   local STOPWATCH_PREV_UTS=
   local BOOT_DIR="$1"
+  BOOT_DIR="${BOOT_DIR%/}"
   if [ -z "$BOOT_DIR" ]; then
     for BOOT_DIR in /target/{mnt/esp,boot}; do
       [ -d "$BOOT_DIR" ] && break
     done
     echo "D: No boot directory given. Defaulting to '$BOOT_DIR'." >&2
   fi
+  local GRUB_DIR="$BOOT_DIR"/grub
   multigrub_is_plausible_boot_dir || return $?
 
   local EFI_DIR="$BOOT_DIR/EFI"
@@ -93,9 +95,8 @@ function multigrub_is_plausible_boot_dir () {
     [ -f "$ITEM" ] && return 0   # any memtest is good enough
   done
 
-  local GR="$BOOT_DIR"/grub
-  [ -f "$GR"/grub.cfg ] && return 0 # Seems well-established.
-  [ -f "$GR"/sgd/main.cfg ] && return 0 # SuperGRUB Disk, a good choice.
+  [ -f "$GRUB_DIR"/grub.cfg ] && return 0 # Seems well-established.
+  [ -f "$GRUB_DIR"/sgd/main.cfg ] && return 0 # SuperGRUB Disk, a good choice.
 
   for ITEM in "$BOOT_DIR"/initrd.img-[0-9]* ''; do
     [ -f "$ITEM" ] && break
