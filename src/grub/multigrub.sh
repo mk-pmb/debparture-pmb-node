@@ -19,23 +19,12 @@ function multigrub_main () {
   multigrub_is_plausible_boot_dir || return $?
 
   local EFI_DIR="$BOOT_DIR/EFI"
-  local ESP_MPT=
+  case "$BOOT_DIR" in
+    */kernels | \
+    / ) EFI_DIR="${BOOT_DIR%/*}/EFI";;
+  esac
+  local ESP_MPT= ESP_PTN= ESP_DISK=
   multigrub_verify_esp_mpt || return $?
-
-  local ESP_PTN="$(findmnt --noheadings --output source --evaluate \
-    --target "$ESP_MPT")"
-  [ -b "$ESP_PTN" ] || return 4$(echo "E: cannot find ESP by mountpoint" \
-    "'$ESP_MPT'" >&2)
-  local ESP_DISK='
-    s~^(/dev/[sh]d[a-z]+)[0-9]+$~\1~p
-    s~^(/dev/mmcblk[0-9]+)p[0-9]+$~\1~p
-    s~^(/dev/nvme[0-9]+n[0-9]+)p[0-9]+$~\1~p
-    '
-  ESP_DISK="$(<<<"$ESP_PTN" sed -nrf <(echo "$ESP_DISK"))"
-  [ -b "$ESP_DISK" ] || return 4$(
-    echo "E: cannot find disk for ESP '$ESP_PTN' mounted on '$ESP_MPT'" >&2)
-
-  # :TODO: verify it's a proper ESP
 
   local GI_OPTS=(
     --boot-directory="$BOOT_DIR"
@@ -114,13 +103,45 @@ function multigrub_is_plausible_boot_dir () {
 
 function multigrub_verify_esp_mpt () {
   $SUDO_CMD mkdir --parents "$EFI_DIR"
-  [ -d "$EFI_DIR" ] || return 4$(echo "E: not a directory: $EFI_DIR" >&2)
-  local ED_MPT="$(stat --dereference --format='%m' -- "$EFI_DIR")"
+  [ -d "$EFI_DIR" ] || return 4$(echo E: "Not a directory: $EFI_DIR" >&2)
+  ESP_MPT="$(stat --dereference --format='%m' -- "$EFI_DIR")"
   local ED_PAR="$(readlink -m -- "$EFI_DIR/..")"
-  [ "$ED_MPT" == "$ED_PAR" ] || return 4$(
-    echo "E: EFI directory's mountpoint '$ED_MPT'" \
+  [ "$ESP_MPT" == "$ED_PAR" ] || return 4$(
+    echo E: "EFI directory's mountpoint '$ESP_MPT'" \
       "is not its parent directory '$ED_PAR'." >&2)
-  ESP_MPT="$ED_MPT"
+
+  local VAL=" on $ESP_MPT type "
+  local BUF="$(mount | grep -Pe '^/' | cut -d '(' -f 1 |
+    grep -Fe "$VAL" | sed -rf <(echo "$BUF") )"
+  BUF="${BUF% }"
+  [ -n "$BUF" ] || return 6$(echo E: >&2 \
+    "Cannot find details for EFI directory's mountpoint '$ESP_MPT'")
+  if [ "${BUF:0:1}" == = ]; then
+    BUF="${BUF:1}"
+    ESP_DISK="${BUF%% *}"
+    BUF="${BUF#* }"
+  fi
+  ESP_PTN="${BUF%% *}"
+  [ -b "$ESP_PTN" ] || return 4$(echo E: "Cannot find ESP by mountpoint" \
+    "'$ESP_MPT': Not a block device: '$ESP_PTN'" >&2)
+  BUF=" ${BUF#* }" # we need the initial space for the VAL check:
+  [ "${BUF:0:${#VAL}}" == "$VAL" ] || return 7$(
+    echo E: 'Control flow bug or very exotic mount output:' \
+      'Result from grep seems to not include the match string.' >&2)
+  BUF="${BUF:${#VAL}}"
+  VAL='vfat'
+  [[ ",$VAL," == *",$BUF,"* ]] || return 6$(
+    echo E: "Expected the file system of ESP mountpoint '$ESP_MPT'" \
+      "to be one of {$VAL}, not '$BUF'" >&2)
+
+  ESP_DISK='
+    s~^(/dev/[sh]d[a-z]+)[0-9]+$~\1~p
+    s~^(/dev/mmcblk[0-9]+)p[0-9]+$~\1~p
+    s~^(/dev/nvme[0-9]+n[0-9]+)p[0-9]+$~\1~p
+    '
+  ESP_DISK="$(<<<"$ESP_PTN" sed -nrf <(echo "$ESP_DISK"))"
+  [ -b "$ESP_DISK" ] || return 4$(
+    echo E: "Cannot find disk for ESP '$ESP_PTN' mounted on '$ESP_MPT'" >&2)
 }
 
 
