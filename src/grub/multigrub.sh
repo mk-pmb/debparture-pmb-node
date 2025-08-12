@@ -29,13 +29,21 @@ function multigrub_main () {
   local GI_OPTS=(
     --boot-directory="$BOOT_DIR"
     --efi-directory="$ESP_MPT"
-    --no-nvram
     --skip-fs-probe
-    --removable
-    -- "$ESP_DISK"
     )
   multigrub_detect_bootloader_id || return $?
 
+  local GRUB_DISK="$(df -- "$GRUB_DIR" | grep -oPe '^/\S+(?=\s)')"
+  case "$GRUB_DISK" in
+    *$'\n'* | \
+    '' ) echo E: 'Failed to detect target disk device name!' >&2; return 4;;
+  esac
+
+  if guess_disk_could_likely_be_removable "$GRUB_DISK"; then
+    GI_OPTS+=( --no-nvram --removable )
+  fi
+
+  GI_OPTS+=( -- "$ESP_DISK" )
   local PLATFS=(
     # Fallbacks first, best platforms last, so their changes will prevail.
     pc
@@ -163,6 +171,30 @@ function multigrub_detect_bootloader_id () {
       return 0
     fi
   fi
+}
+
+
+function guess_disk_could_likely_be_removable () {
+  local DISK_DEV="$1"
+  local HW_PATH='
+    s~/([0-9][0-9a-f:.]+/)+~/~g
+    s~^/devices/~~
+    s~^pci[0-9:]+/~~
+    s~/[^/]+$~~
+    s~[0-9:./]+~:~g
+    s~:[:-]+~\n~g # so we can use uniq
+    s~\n$~~'
+  HW_PATH="$(udevadm info --query=path -- "$DISK_DEV" |
+    sed -re "$HW_PATH" | uniq)"
+  HW_PATH="${HW_PATH//$'\n'/:}"
+  case "$HW_PATH:" in
+    usb:* ) return 0;;
+    *:mmc:* ) return 0;; # (Micro)SD Memory Card
+    ata:host:target:block:* ) return 1;;
+    *:nvme:* ) return 1;;
+  esac
+  echo W: $FUNCNAME: "No idea whether '$DISK_DEV' is removable." \
+    "Simplified hardware connection path is '$HW_PATH'." >&2
 }
 
 
