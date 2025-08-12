@@ -45,6 +45,8 @@ function multigrub_main () {
     --removable
     -- "$ESP_DISK"
     )
+  multigrub_detect_bootloader_id || return $?
+
   local PLATFS=(
     # Fallbacks first, best platforms last, so their changes will prevail.
     pc
@@ -119,6 +121,27 @@ function multigrub_verify_esp_mpt () {
     echo "E: EFI directory's mountpoint '$ED_MPT'" \
       "is not its parent directory '$ED_PAR'." >&2)
   ESP_MPT="$ED_MPT"
+}
+
+
+function multigrub_detect_bootloader_id () {
+  local -A DICT=()
+  local KEY= VAL=
+
+  local PKJS="$GRUB_DIR"/package.json
+  if [ -f "$PKJS" ]; then
+    # We can expect users to format their package.json in a simplified
+    # format, where the relevant key/value pairs are on their own line
+    # and have no weird characters in them:
+    VAL='s~^\{? *"([a-z]+)": "([ !#%-Z_a-z]+)",?$~[\1]=\x27\2\x27~p'
+    eval "DICT=( $(sed -nre "$VAL" -- "$PKJS") )"
+    if [ -n "${DICT[name]}" ]; then
+      GI_OPTS+=( --bootloader-id="${DICT[name]}" )
+      [ -z "${DICT[version]}" ] || GI_OPTS+=(
+        --product-version="${DICT[version]}" )
+      return 0
+    fi
+  fi
 }
 
 
