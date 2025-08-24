@@ -90,7 +90,10 @@ function multigrub_is_plausible_boot_dir () {
     )contains none of the files we'd typically expect, especially not"
 
   local ITEM=
-  for ITEM in "$BOOT_DIR"/memtest86*.{bin,elf}; do
+  for ITEM in \
+    "$BOOT_DIR"/memtest86*.{bin,elf} \
+    "$GRUB_DIR"/*-memtest/mt86p_* \
+  ; do
     [ -f "$ITEM" ] && return 0   # any memtest is good enough
   done
 
